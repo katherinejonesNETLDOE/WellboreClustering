@@ -1,11 +1,10 @@
-#poop poop poop
-
 
 #capture what time the script started
 beginning<-Sys.time()
 
 ##Set up##
 
+#parent folder for everything - where project files, inputs, outputs, notes,etc. are stored
 setwd("P:\\05_AnalysisProjects_Working\\SIMPA\\WellboreClusteringMethods")
 
 #####
