@@ -306,7 +306,7 @@ for (i.val in unique.global.i) {
   
   #populate the Local.Dist.Const column for (Pi)
   ###Local distance constraint for Pi
-  order2mean.meanvar$Local.Dist.Const<-order2mean.meanvar$second.order.mean + 2*order2mean.meanvar$mean.var
+  order2mean.meanvar$Local.Dist.Const<-order2mean.meanvar$second.order.mean + 1*order2mean.meanvar$mean.var
 }
 
 after.local.criteria<-Sys.time()
@@ -462,7 +462,7 @@ for (i.val in unique.i.good.local) {
   
   #populate the Local.Dist.Const column for (Pi)
   ###Local distance constraint for Pi
-  T1.order2mean.meanvar$T1.diff.const<-T1.order2mean.meanvar$second.order.mean + .5*T1.order2mean.meanvar$mean.var
+  T1.order2mean.meanvar$T1.diff.const<-T1.order2mean.meanvar$second.order.mean + 1*T1.order2mean.meanvar$mean.var
 }
 
 after.local.criteria<-Sys.time()
@@ -599,6 +599,7 @@ good.local.good.depth<-good.local.good.depth[!is.na(good.local.good.depth$DI.j),
 
 #look only for i values that have spatially directly reachable points and density indicators greater than 0
 clustering.info <- clustering.info[with(clustering.info,(!(is.na(sdr)) & DI != 0)),]
+#t1<-2500
 
 ### BEGIN the iterative clustering process ###
 
@@ -640,7 +641,7 @@ while (sum(is.na(clustering.info$clust))!=0){ #While there are still points uncl
   
   clustering.info$clust[clustering.info$i == spatial.core.i] <- cluster.num #get spatial.core.i output from beginning of while loop or stepping into if statement
   
-  depth.comparison.avg<-good.local.good.depth[good.local.good.depth$i==spatial.core.i,4][1] #returns a list of all times i's depth appears, just want 1 element
+  depth.comparison.avg<-good.local.good.depth[good.local.good.depth$i==spatial.core.i,5][1] #returns a list of all times i's depth appears, just want 1 element
   depth.list<-c() #create empty vector to receive depths for new cluster
   counter<-length(depth.list)  #create counter that is the length of depth.list
   first.neighbs<-good.local.good.depth[good.local.good.depth$i==spatial.core.i,] #make mini dataframe of 1st order neighbors
@@ -668,10 +669,13 @@ while (sum(is.na(clustering.info$clust))!=0){ #While there are still points uncl
       }
       
       for (row in 1:nrow(ordered.neebs)){ #get all of the neighbors for the j.value above, go through the rows
-        
+        if(ordered.neebs[row,10]!=0){
+          
         if (is.na(clustering.info[clustering.info$i==(ordered.neebs[row,2]),6])==TRUE){ #if the point has already been assigned, back to for loop and go to next neighbor
           #######duplication between line above and below? 
-          if(  ((ordered.neebs[row,5]- depth.comparison.avg) <= t1)   &&  is.na(clustering.info[clustering.info$i==ordered.neebs[row,2],6])  ){  #if the $clust doesnt already have an assignement
+          i.val.ordered.neebs<-ordered.neebs[1,1] #get the ivalue of the ordered.neebs so can grab T1 reference value
+          if ((ordered.neebs[row,5]- depth.comparison.avg) <= (T1.order2mean.meanvar[T1.order2mean.meanvar$i.val==i.val.ordered.neebs,4])){  # &&  is.na(clustering.info[clustering.info$i==ordered.neebs[row,2],6])  ){  #if the $clust doesnt already have an assignement
+            
             depth.list<-c(depth.list, ordered.neebs[row,5]) #add new depths
             print(paste0("Cluster number: ",cluster.num," depth added: ", tail(depth.list, n=1), " from point ", ordered.neebs[row,2]))  #print to console for checking
             counter<-length(depth.list) #make counter length of depth.list
@@ -682,7 +686,8 @@ while (sum(is.na(clustering.info$clust))!=0){ #While there are still points uncl
           
         }
         
-      } 
+        } 
+      }
      
    
     }
@@ -718,7 +723,7 @@ no.noise.clust$depth<-tri.withdepth[match(no.noise.clust$i,tri.withdepth$i),"dep
 no.noise.clust$spud<-tri.withdepth[match(no.noise.clust$i,tri.withdepth$i),"spud"] 
 
 plot(no.noise.clust$x, no.noise.clust$y,pch=19,cex=.5,col=no.noise.clust$clust)
-#plot(no.noise.clust$x, no.noise.clust$y,pch=19,cex=.5,col= "black")
+plot(no.noise.clust$x, no.noise.clust$y,pch=19,cex=.5,col= "black")
 
 
 clust1<-no.noise.clust[no.noise.clust$clust==1,] #inspecting shape of individual clusters
