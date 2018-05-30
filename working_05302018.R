@@ -5,7 +5,7 @@ beginning<-Sys.time()
 ##Set up##
 
 #parent folder for everything - where project files, inputs, outputs, notes,etc. are stored
-setwd("P:\\05_AnalysisProjects_Working\\SIMPA\\WellboreClusteringMethods")
+setwd("P:\\05_AnalysisProjects_Working\\SIMPA\\WellboreClusteringMethods\\") #double back slash at end so can put abbreviated folder paths throughout scripts
 
 #####
 
@@ -24,8 +24,8 @@ library(stringr)
 library(rgeos)
 #####
 
-#enter filepath to input data
-input.filepath<-"scripts_inputs\\new\\inputs\\okwells_GT.csv"
+#enter filepath to input data - use abbreviated folder path within working directory (back slashes included above)
+input.filepath<-"inputs\\okwells_GT.csv"
 
 #read in CSV data - currently set up to take in IHS data
 df<-read.csv(input.filepath)
@@ -48,16 +48,16 @@ split.filepath<-strsplit(input.filepath,"[.]")[[1]][1]
 input.initials<-str_sub(split.filepath,-2,-1)
 
 #creates individual dataframes with each of these columns
-lat<-data.frame(df[ ,which(colnames(df)=="Surface_La")])    #change these depending on csv headers
-long<-data.frame(df[ ,which(colnames(df)=="Surface_Lo")])   #change these depending on csv headers
-depth<-data.frame(df[ ,which(colnames(df)=="Depth_Tota")])   #change these depending on csv headers
+lat<-data.frame(df[ ,which(colnames(df)=="Surface_Latitude")])    #change these depending on csv headers
+long<-data.frame(df[ ,which(colnames(df)=="Surface_Longitude")])   #change these depending on csv headers
+depth<-data.frame(df[ ,which(colnames(df)=="Depth_Total_Driller")])   #change these depending on csv headers
 spud_date<-data.frame(df[ ,which(colnames(df)=="Date_Spud")]) 
 
 #puts all of the single column dataframes into one and names the columns
 df.lat.long.depth<-as.data.frame(cbind(long,lat,depth,spud_date))
 colnames(df.lat.long.depth)<-c("x","y","depth","spud_date")
-df.lat.long.depth$spud_year<-as.numeric(format(as.Date(df.lat.long.depth$spud_date, format="%m/%d/%Y"),"%Y"))
-df.lat.long.depth$spud_date<-NULL
+df.lat.long.depth$spud_year<-as.numeric(format(as.Date(df.lat.long.depth$spud_date, format="%m/%d/%Y"),"%Y")) #get just the year for spuds
+df.lat.long.depth$spud_date<-NULL #get rid of column year was taken from
 
 ##### NEED ##### 
 #to deal more extensively with duplicates, but this will come from searching wellbores with matching 10-dig API's
@@ -110,7 +110,7 @@ j <- abs( j[ keep ] )
 
 #new plot to show points and segments with more control over plotting
 plot.new()
-plot( tri.withdepth$x, tri.withdepth$y,pch=19,cex=1,col="black" )
+plot( tri.withdepth$x, tri.withdepth$y,pch=19,cex=.5,col="black" )
 #text(tri.withdepth$x, tri.withdepth$y,labels=tri.withdepth$i,pos = 4)
 
 #gets the ith and jth elements from the tri.all.points$x and tri.all.points$y columns of the dataframe  
@@ -362,7 +362,7 @@ segments(tri.all.points$x[i.good.local], tri.all.points$y[i.good.local], tri.all
 
 #the T1 equivalent of local downselect 
 
-## BEGIN local down select ##
+## BEGIN T1/attribute-based down select ##
 
 before.local.criteria<-Sys.time()
 
@@ -382,38 +382,38 @@ good.local.edges.tri$depth.i<- tri.withdepth$depth[match(good.local.edges.tri$i,
 good.local.edges.tri$depth.j<- tri.withdepth$depth[match(good.local.edges.tri$j, tri.withdepth$i)]
 good.local.edges.tri$depth.diff<-abs(good.local.edges.tri$depth.i-good.local.edges.tri$depth.j)
 
-#for all unique i values in global.good.edges.tri
+#for all unique i values in global.local.edges.tri
 for (i.val in unique.i.good.local) {
   print (i.val) #print i value to keep track of time
   i.val.df<-good.local.edges.tri[good.local.edges.tri$i==i.val,] #create a subset of the dataframe for all i values 
   
-  #get distance to each of the first order neighbors of i
+  #get attribute distance to each of the first order neighbors of i
   i.neigh.dist<-c(i.val.df$depth.diff)
   
   #put all first order neighbors in a vector (i.e. get the point index, aka j value column)
   j.val.vec<-as.vector(i.val.df[,2])
   
-  #create an empty vector to append the distances of the 2nd order neighbors (i.e. the distances between i's 1st and 2nd order neighbors)
+  #create an empty vector to append the attribute differences of the 2nd order neighbors (i.e. the distances between i's 1st and 2nd order neighbors)
   i.2neigh.dist<-c()
   
-  #create an empty vector to return the variances for i's 1st neighbors 
-  #(i.e.- look at the j values from the global down select, take the variance of all edges connected to those j values)
+  #create an empty vector to return the variances for i's 1st neighbors and their attribute differences
+  #(i.e.- look at the j values from the local down select, take the variance of all edges connected to those j values)
   i.neighbs.var<-c()
   
-  #while looping through the unique i values found in the global down select to get the 2-order mean
-  #go ahead and loop through the 1st order neighbors of i (i.e. j values in global down select) to get the edge distances to calculate the 2-order.mean
+  #while looping through the unique i values found in the local down select to get the 2-order mean
+  #go ahead and loop through the 1st order neighbors of i (i.e. j values in local down select) to get the attribute differences to calculate the 2-order.mean
   for (j.val in j.val.vec) {
     
     #for each 1st order neighbor, get it's corresponding j-val neighbors (i.e. 2nd order neighbors from i.val)  
     jval.neighbs<-subset(good.local.edges.tri, i== j.val)
     
-    #while looping for 2-order.mean lengths, go ahead and grab the variance of edge distances around i's first order neighbors 
+    #while looping for 2-order.mean att.differences, go ahead and grab the variance of att.differences around i's first order neighbors 
     jval.var<-sd(as.vector(jval.neighbs$depth.diff),na.rm=TRUE)
     
-    ###append the variances for first order neighbors (i.e. global down select jvals)
+    ###append the variances for first order neighbors (i.e. local down select jvals)
     i.neighbs.var<-c(i.neighbs.var,jval.var)
     
-    #get a vector of all the distances between 1st and 2nd order neighbors 
+    #get a vector of all the att.differences between 1st and 2nd order neighbors 
     i.2neigh.dist<-c(i.2neigh.dist,as.vector(jval.neighbs$depth.diff))
     
     ###create a vector listing the neighbors for that j.val
@@ -428,7 +428,7 @@ for (i.val in unique.i.good.local) {
       ###get all the edges connected to that second order neighbor
       j.val.neighbors.for.var<-subset(good.global.edges.tri, i== val)
       
-      ###get variance of edges connected to that second order neighbor
+      ###get the att.difference variance of edges connected to that second order neighbor
       jval.neighb.var<-sd(as.vector(j.val.neighbors.for.var$depth.diff),na.rm=TRUE)
       
       ###append the variances for the second order neighbors 
@@ -437,22 +437,22 @@ for (i.val in unique.i.good.local) {
     }
   }
   
-  #combine the first order neighbor distances and the second order neighbor distances
+  #combine the first order neighbor distances and the second order neighbor att.differences
   first.second.neigh.lengths<-c(i.neigh.dist,i.2neigh.dist)
   
-  ###combine the 1st order neighbors and 2nd order neighbors variances
+  ###combine the 1st order neighbors and 2nd order neighbors att.diff. variances
   first.second.neigh.vars<-c(i.neighbs.var,jval.neighbors.vars)
   
-  #take the mean of the vector of 1st and 2nd neighbor distances
+  #take the mean of the vector of 1st and 2nd neighbor att.differences
   second.order.mean<-mean(first.second.neigh.lengths,na.rm=TRUE)
   
-  ###take the mean of the vector of 1st and 2nd neighbor variances
+  ###take the mean of the vector of 1st and 2nd neighbor att.diff. variances
   mean.var<-mean(first.second.neigh.vars,na.rm=TRUE)
   
   #match the original i.val to it's second order mean AND mean.var in data.frame format
   newrow<-as.data.frame(cbind(i.val,second.order.mean,mean.var))
   
-  ###create Local.Dist.Const column
+  ###create T1.Dist.Const column
   ###this column has to be created wtih NA's because when looping through and trying to rbind() 
   ###the new rows adding to dataframe have to have the same number of columns
   newrow$T1.diff.const<-NA
@@ -462,7 +462,7 @@ for (i.val in unique.i.good.local) {
   
   #populate the Local.Dist.Const column for (Pi)
   ###Local distance constraint for Pi
-  T1.order2mean.meanvar$T1.diff.const<-T1.order2mean.meanvar$second.order.mean + 1*T1.order2mean.meanvar$mean.var
+  T1.order2mean.meanvar$T1.diff.const<-T1.order2mean.meanvar$second.order.mean + .5*T1.order2mean.meanvar$mean.var
 }
 
 after.local.criteria<-Sys.time()
@@ -472,15 +472,15 @@ print(local.criteria.time)
 ###With new Local.Dist.Const for each (Pi), go through the global.good.edges.tri dataframe and remove any edges 
 ###extending from a point that are greater than the local distance constraint established for that i value
 
-## for every i.val in unique.global.i - check to see if the (i,j) pairs in good.global.edges.tri are longer than
-## the local.dist.const. for the given i
+## for every i.val in unique.local.i - check to see if the (i,j) pairs in good.local.edges.tri are more different
+## than the T1.diff.const. for the given i
 
-before.local.downselect<-Sys.time()
+before.T1.downselect<-Sys.time()
 
-#create an empty dataframe that will receive edges that do meet the Local.Dist.Const
+#create an empty dataframe that will receive edges that do meet the T1.diff.const
 good.local.good.depth<-data.frame()
 
-#for every unique i value in the global down selected points
+#for every unique i value in the local down selected points -- same unique vector as used at the beginning of T1 process
 for (i.val in unique.i.good.local) {
   #create a dataframe subset containing edges linked to i
   i.val.df<-good.local.edges.tri[good.local.edges.tri$i==i.val,]
@@ -503,7 +503,7 @@ print(local.downselect.time)
 
 #now look for (i,j) pairs that exist in good.local.edges.tri but NOT in good.local.edges.tri (i.e. edges that need to be deleted)
 good.local.edges.tri$check <- ifelse(is.na(match(paste0(good.local.edges.tri$i, good.local.edges.tri$j), 
-                                                 paste0(good.local.depth$i, good.local.depth$j))),"No", "Yes")
+                                                 paste0(good.local.good.depth$i, good.local.good.depth$j))),"No", "Yes")
 
 #for rows where yes is printed (i.e. the pair passes global downselect)
 i.good.depth<-good.local.edges.tri[good.local.edges.tri$check=="Yes",1] #return the i value of good pairs
@@ -512,9 +512,9 @@ j.good.depth<-good.local.edges.tri[good.local.edges.tri$check=="Yes",2] #return 
 #the above vectors should be the same length, and the corresponding elements represent (i,j) pairs
 
 ## plotting of final edges that pass the T1 constraint
-segments(tri.all.points$x[i.good.depth], tri.all.points$y[i.good.depth], tri.all.points$x[j.good.depth], tri.all.points$y[j.good.depth], lwd = 1,col="red" )
+segments(tri.all.points$x[i.good.depth], tri.all.points$y[i.good.depth], tri.all.points$x[j.good.depth], tri.all.points$y[j.good.depth], lwd = 1,col="orange" )
 
-###END OF LOCAL DOWN SELECT###
+###END OF T1 DOWN SELECT###
 
 # begin.coords<-data.frame(x=c(tri.all.points$x[i.good.local]),y=c(tri.all.points$y[i.good.local])) #define x,y for segment begin
 # end.coords<-data.frame(x=c(tri.all.points$x[j.good.local]),y=c(tri.all.points$y[j.good.local]))   #define x,y for segment end
@@ -528,10 +528,11 @@ segments(tri.all.points$x[i.good.depth], tri.all.points$y[i.good.depth], tri.all
 # export3.time<-end.export3-begin.export3
 # print(export3.time)
 
+### used to write out the time it takes to perform each of the different operations in the method
 
-filename=paste0(input.initials,'times.txt') #creates a filename for printing out run times
-write(c("Global Downselect",global.downselect.time,"Local Criteria",local.criteria.time,"Local Downselect",local.downselect.time,"T1 Criteria",t1.criteria.time,"T1 downselect",t1.downselect.time,#"Total Export Time",total.export.time,
-        "Total time",total.time), file=filename,append=FALSE) #prints the different times on lines beneath their process name
+# filename=paste0(input.initials,'times.txt') #creates a filename for printing out run times
+# write(c("Global Downselect",global.downselect.time,"Local Criteria",local.criteria.time,"Local Downselect",local.downselect.time,"T1 Criteria",t1.criteria.time,"T1 downselect",t1.downselect.time,#"Total Export Time",total.export.time,
+#         "Total time",total.time), file=filename,append=FALSE) #prints the different times on lines beneath their process name
 
 
 #good.local.good.depth<-good.local.depth
@@ -601,7 +602,7 @@ clustering.info <- clustering.info[with(clustering.info,(!(is.na(sdr)) & DI != 0
 
 ### BEGIN the iterative clustering process ###
 
-while (sum(is.na(clustering.info$clust))!=0){ #While there are still points unclustered in clustering.info$clust, create a new cluster
+while (sum(is.na(clustering.info$clust))!=0){ #While there are still points unclustered in clustering.info$clust (indicated by NA), create a new cluster
   
   NAs.remaining<-clustering.info[is.na(clustering.info$clust),] #downselect to a new dataframe that has only NA's in $clust
   ordered.DI<-NAs.remaining[order(NAs.remaining$DI,decreasing = TRUE),]#order the dataframe from highest to lowest DensityIndicator ($DI) where $clust == NA's 
