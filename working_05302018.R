@@ -562,7 +562,7 @@ for (value in unique.i.good.depth){
   differences<-c() #create an empty differences vector for each i value so differences can be tabulated on a per i value basis
   
   for (row in 1:nrow(i.pnt.neighbors)){ #for each row in the dataframe with i and it's neighbors
-    att.diff<-abs(i.pnt.neighbors[row,4]-i.pnt.neighbors[row,5]) #get the absolute value of the att. difference between i and j attributes
+    att.diff<-abs(i.pnt.neighbors[row,5]-i.pnt.neighbors[row,6]) #get the absolute value of the att. difference between i and j attributes
     differences<-c(differences,att.diff) #append attribute differences to the running list of differences for that i value
   }
   
@@ -610,10 +610,11 @@ while (sum(is.na(clustering.info$clust))!=0){ #While there are still points uncl
   initial.core.candidates<-ordered.DI[ordered.DI$DI==max.di,] #find all i's with the max DI
   spatial.core.i<-initial.core.candidates[initial.core.candidates$avg.att.diff==min(initial.core.candidates$avg.att.diff),1][1]#the spatial core is then the i with highest DI and lowest avg. att.diff
   
-  if (is.na(spatial.core.i)){
-    spatial.core.i<-initial.core.candidates[1,1]
-    
-  }
+  # if (is.na(spatial.core.i)){
+  #   spatial.core.i<-initial.core.candidates[1,1]
+  #   
+  # }
+  
   #if the above line returns multiple spatial.core.i values, take the first one 
   
   ##### NEED to change how this is handled -- instead of just taking the first of multiple i values returned
@@ -682,11 +683,11 @@ while (sum(is.na(clustering.info$clust))!=0){ #While there are still points uncl
         }
         
       } 
-      
-    } 
+     
+   
+    }
     next.list<-new.next.list #once you step out of evaluating the neighbors for a single jvalue (in top for loop), pass a new list of neighbors to search through
   }
-  
   cluster.num<-cluster.num+1 #when no more neighbors pass criteria, next.list is empty, steps out of 2nd while loop to top while loop, and begins another cluster
 }
 
