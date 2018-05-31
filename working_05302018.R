@@ -25,7 +25,7 @@ library(rgeos)
 #####
 
 #enter filepath to input data - use abbreviated folder path within working directory (back slashes included above)
-input.filepath<-"inputs\\okwells_GT.csv"
+input.filepath<-"inputs\\okwells_AUp.csv"
 
 #read in CSV data - currently set up to take in IHS data
 df<-read.csv(input.filepath)
@@ -48,9 +48,9 @@ split.filepath<-strsplit(input.filepath,"[.]")[[1]][1]
 input.initials<-str_sub(split.filepath,-2,-1)
 
 #creates individual dataframes with each of these columns
-lat<-data.frame(df[ ,which(colnames(df)=="Surface_Latitude")])    #change these depending on csv headers
-long<-data.frame(df[ ,which(colnames(df)=="Surface_Longitude")])   #change these depending on csv headers
-depth<-data.frame(df[ ,which(colnames(df)=="Depth_Total_Driller")])   #change these depending on csv headers
+lat<-data.frame(df[ ,which(colnames(df)=="Surface_La")])    #change these depending on csv headers
+long<-data.frame(df[ ,which(colnames(df)=="Surface_Lo")])   #change these depending on csv headers
+depth<-data.frame(df[ ,which(colnames(df)=="Depth_Tota")])   #change these depending on csv headers
 spud_date<-data.frame(df[ ,which(colnames(df)=="Date_Spud")]) 
 
 #puts all of the single column dataframes into one and names the columns
@@ -306,7 +306,7 @@ for (i.val in unique.global.i) {
   
   #populate the Local.Dist.Const column for (Pi)
   ###Local distance constraint for Pi
-  order2mean.meanvar$Local.Dist.Const<-order2mean.meanvar$second.order.mean + 1*order2mean.meanvar$mean.var
+  order2mean.meanvar$Local.Dist.Const<-order2mean.meanvar$second.order.mean + 2*order2mean.meanvar$mean.var
 }
 
 after.local.criteria<-Sys.time()
@@ -462,7 +462,7 @@ for (i.val in unique.i.good.local) {
   
   #populate the Local.Dist.Const column for (Pi)
   ###Local distance constraint for Pi
-  T1.order2mean.meanvar$T1.diff.const<-T1.order2mean.meanvar$second.order.mean + 1*T1.order2mean.meanvar$mean.var
+  T1.order2mean.meanvar$T1.diff.const<-T1.order2mean.meanvar$second.order.mean + .5*T1.order2mean.meanvar$mean.var
 }
 
 after.local.criteria<-Sys.time()
@@ -669,7 +669,7 @@ while (sum(is.na(clustering.info$clust))!=0){ #While there are still points uncl
       }
       
       for (row in 1:nrow(ordered.neebs)){ #get all of the neighbors for the j.value above, go through the rows
-        if(ordered.neebs[row,10]!=0){
+        if(ordered.neebs[row,10]!=0){ #this only looks at the point if it's DI.j value is not 0...this seems like a duplicate of above filtering before stepping into while loop
           
         if (is.na(clustering.info[clustering.info$i==(ordered.neebs[row,2]),6])==TRUE){ #if the point has already been assigned, back to for loop and go to next neighbor
           #######duplication between line above and below? 
@@ -729,11 +729,24 @@ plot(no.noise.clust$x, no.noise.clust$y,pch=19,cex=.5,col= "black")
 clust1<-no.noise.clust[no.noise.clust$clust==1,] #inspecting shape of individual clusters
 clust2<-no.noise.clust[no.noise.clust$clust==2,] #inspecting shape of individual clusters
 clust3<-no.noise.clust[no.noise.clust$clust==3,] #inspecting shape of individual clusters
+clust4<-no.noise.clust[no.noise.clust$clust==4,]
+clust5<-no.noise.clust[no.noise.clust$clust==5,]
+clust6<-no.noise.clust[no.noise.clust$clust==6,]
+clust7<-no.noise.clust[no.noise.clust$clust==7,]
+clust8<-no.noise.clust[no.noise.clust$clust==8,]
+clust9<-no.noise.clust[no.noise.clust$clust==9,]
+clust10<-no.noise.clust[no.noise.clust$clust==10,]
+
 points(clust1$x,clust1$y,pch=19,cex=.5,col="purple")
 points(clust2$x,clust2$y,pch=19,cex=.5,col="red")
 points(clust3$x,clust3$y,pch=19,cex=.5,col="blue")
-
-
+points(clust4$x,clust4$y,pch=19,cex=.5,col="green")
+points(clust5$x,clust5$y,pch=19,cex=.5,col="orange")
+points(clust6$x,clust6$y,pch=19,cex=.5,col="lightblue")
+points(clust7$x,clust7$y,pch=19,cex=.5,col="brown")
+points(clust8$x,clust8$y,pch=19,cex=.5,col="pink")
+points(clust9$x,clust9$y,pch=19,cex=.5,col="grey")
+points(clust10$x,clust10$y,pch=19,cex=.5,col="darkgrey")
 
 
 dataframe.withxy<-no.noise.clust #coordinates must be fed with column heading "x" and "y"
