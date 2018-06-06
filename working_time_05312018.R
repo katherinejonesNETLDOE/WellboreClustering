@@ -1,8 +1,4 @@
 
-#capture what time the script started
-beginning<-Sys.time()
-
-##Set up##
 
 #parent folder for everything - where project files, inputs, outputs, notes,etc. are stored
 setwd("P:\\05_AnalysisProjects_Working\\SIMPA\\WellboreClusteringMethods\\") #double back slash at end so can put abbreviated folder paths throughout scripts
@@ -25,7 +21,7 @@ library(rgeos)
 #####
 
 #enter filepath to input data - use abbreviated folder path within working directory (back slashes included above)
-input.filepath<-"inputs\\okwells_AUp.csv"
+input.filepath<-"inputs\\okwells_GT.csv"
 
 #read in CSV data - currently set up to take in IHS data
 df<-read.csv(input.filepath)
@@ -48,9 +44,9 @@ split.filepath<-strsplit(input.filepath,"[.]")[[1]][1]
 input.initials<-str_sub(split.filepath,-2,-1)
 
 #creates individual dataframes with each of these columns
-lat<-data.frame(df[ ,which(colnames(df)=="Surface_La")])    #change these depending on csv headers
-long<-data.frame(df[ ,which(colnames(df)=="Surface_Lo")])   #change these depending on csv headers
-depth<-data.frame(df[ ,which(colnames(df)=="Depth_Tota")])   #change these depending on csv headers
+lat<-data.frame(df[ ,which(colnames(df)=="Surface_Latitude")])    #change these depending on csv headers
+long<-data.frame(df[ ,which(colnames(df)=="Surface_Longitude")])   #change these depending on csv headers
+depth<-data.frame(df[ ,which(colnames(df)=="Depth_Total_Driller")])   #change these depending on csv headers
 spud_date<-data.frame(df[ ,which(colnames(df)=="Date_Spud")]) 
 
 #puts all of the single column dataframes into one and names the columns
@@ -306,7 +302,7 @@ for (i.val in unique.global.i) {
   
   #populate the Local.Dist.Const column for (Pi)
   ###Local distance constraint for Pi
-  order2mean.meanvar$Local.Dist.Const<-order2mean.meanvar$second.order.mean + 2*order2mean.meanvar$mean.var
+  order2mean.meanvar$Local.Dist.Const<-order2mean.meanvar$second.order.mean + .5*order2mean.meanvar$mean.var
 }
 
 after.local.criteria<-Sys.time()
@@ -535,7 +531,108 @@ segments(tri.all.points$x[i.good.depth], tri.all.points$y[i.good.depth], tri.all
 #         "Total time",total.time), file=filename,append=FALSE) #prints the different times on lines beneath their process name
 
 
-#good.local.good.depth<-good.local.depth
+##create Year1.ordermean table, but don't perform downselect
+#get the unique i values from good.global.edges.tri
+unique.depth.i<-unique(i.good.depth)
+
+
+
+good.local.good.depth$spud.i<- tri.withdepth$spud[match(good.local.good.depth$i, tri.withdepth$i)]
+good.local.good.depth$spud.j<- tri.withdepth$spud[match(good.local.good.depth$j, tri.withdepth$i)]
+good.local.good.depth$spud.diff<- abs(good.local.good.depth$spud.i-good.local.good.depth$spud.j)
+  
+## Generate 2-Order.Mean (Pi) and Mean.Var (Pi)
+
+#empty dataframe to populate with i values, 2-Order.Mean (Pi) AND Mean.Variation(Pi)
+year.order2mean.meanvar<-data.frame()
+
+#used this when trying to run on subset of data to speed up testing
+#test.i<-unique.global.i[11217:11532]
+
+
+#for all unique i values in global.good.edges.tri
+for (i.val in unique.depth.i) {
+  print (i.val) #print i value to keep track of time
+  i.val.df<-good.local.good.depth[good.local.good.depth$i==i.val,] #create a subset of the dataframe for all i values 
+  
+  #get distance to each of the first order neighbors of i
+  i.neigh.dist<-c(i.val.df$spud.diff)
+  
+  #put all first order neighbors in a vector (i.e. get the point index, aka j value column)
+  j.val.vec<-as.vector(i.val.df[,2])
+  
+  #create an empty vector to append the distances of the 2nd order neighbors (i.e. the distances between i's 1st and 2nd order neighbors)
+  i.2neigh.dist<-c()
+  
+  #create an empty vector to return the variances for i's 1st neighbors 
+  #(i.e.- look at the j values from the global down select, take the variance of all edges connected to those j values)
+  i.neighbs.var<-c()
+  
+  #while looping through the unique i values found in the global down select to get the 2-order mean
+  #go ahead and loop through the 1st order neighbors of i (i.e. j values in global down select) to get the edge distances to calculate the 2-order.mean
+  for (j.val in j.val.vec) {
+    
+    #for each 1st order neighbor, get it's corresponding j-val neighbors (i.e. 2nd order neighbors from i.val)  
+    jval.neighbs<-subset(good.local.good.depth, i== j.val)
+    
+    #while looping for 2-order.mean lengths, go ahead and grab the variance of edge distances around i's first order neighbors 
+    jval.var<-sd(as.vector(jval.neighbs$spud.diff),na.rm=TRUE)
+    
+    ###append the variances for first order neighbors (i.e. global down select jvals)
+    i.neighbs.var<-c(i.neighbs.var,jval.var)
+    
+    #get a vector of all the distances between 1st and 2nd order neighbors 
+    i.2neigh.dist<-c(i.2neigh.dist,as.vector(jval.neighbs$spud.diff))
+    
+    ###create a vector listing the neighbors for that j.val
+    neighbors.2.vec<-as.vector(jval.neighbs$j)
+    
+    ####create an empty vector to return the variances for i's second neighbors (i.e.- variance of j.val nieghbors)
+    jval.neighbors.vars<-c()
+    
+    ###for every neighbor of j.val (i 2nd neighbors)
+    for (val in neighbors.2.vec){
+      
+      ###get all the edges connected to that second order neighbor
+      j.val.neighbors.for.var<-subset(good.local.good.depth, i== val)
+      
+      ###get variance of edges connected to that second order neighbor
+      jval.neighb.var<-sd(as.vector(j.val.neighbors.for.var$spud.diff),na.rm=TRUE)
+      
+      ###append the variances for the second order neighbors 
+      jval.neighbors.vars<-c(jval.neighbors.vars,jval.neighb.var)
+      
+    }
+  }
+  
+  #combine the first order neighbor distances and the second order neighbor distances
+  first.second.neigh.lengths<-c(i.neigh.dist,i.2neigh.dist)
+  
+  ###combine the 1st order neighbors and 2nd order neighbors variances
+  first.second.neigh.vars<-c(i.neighbs.var,jval.neighbors.vars)
+  
+  #take the mean of the vector of 1st and 2nd neighbor distances
+  second.order.mean<-mean(first.second.neigh.lengths,na.rm=TRUE)
+  
+  ###take the mean of the vector of 1st and 2nd neighbor variances
+  mean.var<-mean(first.second.neigh.vars,na.rm=TRUE)
+  
+  #match the original i.val to it's second order mean AND mean.var in data.frame format
+  newrow<-as.data.frame(cbind(i.val,second.order.mean,mean.var))
+  
+  ###create Local.Dist.Const column
+  ###this column has to be created wtih NA's because when looping through and trying to rbind() 
+  ###the new rows adding to dataframe have to have the same number of columns
+  newrow$Spud.Const<-NA
+  
+  #create a final data.frame output with all i.vals within global.good.edges.tri and their 2-Order.Mean and Mean.Var
+  year.order2mean.meanvar<-rbind(year.order2mean.meanvar,newrow)
+  
+  #populate the Local.Dist.Const column for (Pi)
+  ###Local distance constraint for Pi
+  year.order2mean.meanvar$Spud.Const<-year.order2mean.meanvar$second.order.mean + .5*year.order2mean.meanvar$mean.var
+}
+
 
 
 ### Get the Directly Spatially Reachable and the Spatially Reachable points for each Pi ###
@@ -595,10 +692,12 @@ good.local.good.depth$avg.att.diff<-clustering.info[match(good.local.good.depth$
 ###### NEED to figure out if we should just remove rows that have j.values without DI? 
 good.local.good.depth<-good.local.good.depth[!is.na(good.local.good.depth$DI.j),] #remove where j values doesn't exist in clustering.info - can't evaluate future loops if so
 
+###### NEED to figure out who to handle when spud.j values NA
+good.local.good.depth<-good.local.good.depth[!is.na(good.local.good.depth$spud.j),]
 ##### NEED to figure out if it is appropriate to filter this early on?
 
 #look only for i values that have spatially directly reachable points and density indicators greater than 0
-clustering.info <- clustering.info[with(clustering.info,(!(is.na(sdr)) & DI != 0)),]
+clustering.info <- clustering.info[with(clustering.info,(!(is.na(sdr)) & DI != 0 )),]
 #t1<-2500
 
 ### BEGIN the iterative clustering process ###
@@ -642,7 +741,9 @@ while (sum(is.na(clustering.info$clust))!=0){ #While there are still points uncl
   clustering.info$clust[clustering.info$i == spatial.core.i] <- cluster.num #get spatial.core.i output from beginning of while loop or stepping into if statement
   
   depth.comparison.avg<-good.local.good.depth[good.local.good.depth$i==spatial.core.i,5][1] #returns a list of all times i's depth appears, just want 1 element
+  year.comparison.avg<-good.local.good.depth[good.local.good.depth$i==spatial.core.i,8][1]
   depth.list<-c() #create empty vector to receive depths for new cluster
+  year.list<-c()
   counter<-length(depth.list)  #create counter that is the length of depth.list
   first.neighbs<-good.local.good.depth[good.local.good.depth$i==spatial.core.i,] #make mini dataframe of 1st order neighbors
   first.neighbs.order<-first.neighbs[order(first.neighbs$DI.j,decreasing = TRUE),] #order the neighbors in descending order of DI to be systematic about searching
@@ -671,25 +772,27 @@ while (sum(is.na(clustering.info$clust))!=0){ #While there are still points uncl
       for (row in 1:nrow(ordered.neebs)){ #get all of the neighbors for the j.value above, go through the rows
         if(ordered.neebs[row,10]!=0){ #this only looks at the point if it's DI.j value is not 0...this seems like a duplicate of above filtering before stepping into while loop
           
-        if (is.na(clustering.info[clustering.info$i==(ordered.neebs[row,2]),6])==TRUE){ #if the point has already been assigned, back to for loop and go to next neighbor
-          #######duplication between line above and below? 
-          i.val.ordered.neebs<-ordered.neebs[1,1] #get the ivalue of the ordered.neebs so can grab T1 reference value
-          if ((ordered.neebs[row,5]- depth.comparison.avg) <= (T1.order2mean.meanvar[T1.order2mean.meanvar$i.val==i.val.ordered.neebs,4])){  # &&  is.na(clustering.info[clustering.info$i==ordered.neebs[row,2],6])  ){  #if the $clust doesnt already have an assignement
-            
-            depth.list<-c(depth.list, ordered.neebs[row,5]) #add new depths
-            print(paste0("Cluster number: ",cluster.num," depth added: ", tail(depth.list, n=1), " from point ", ordered.neebs[row,2]))  #print to console for checking
-            counter<-length(depth.list) #make counter length of depth.list
-            clustering.info$clust[clustering.info$i==ordered.neebs[row,2]]<-cluster.num #assign the new cluster number to the $clust column 
-            depth.comparison.avg<-sum(depth.list)/counter # make new average for comparison from depth.list and counter
-            new.next.list<-c(new.next.list,ordered.neebs[row,2]) #add the neighbor that now checks out to the new list so it's neighbors can be evaluated
+          if (is.na(clustering.info[clustering.info$i==(ordered.neebs[row,2]),6])==TRUE){ #if the point has already been assigned, back to for loop and go to next neighbor
+            #######duplication between line above and below? 
+            i.val.ordered.neebs<-ordered.neebs[1,1] #get the ivalue of the ordered.neebs so can grab T1 reference value
+            if (abs(ordered.neebs[row,5]- depth.comparison.avg) <= (T1.order2mean.meanvar[T1.order2mean.meanvar$i.val==i.val.ordered.neebs,4])){  # &&  is.na(clustering.info[clustering.info$i==ordered.neebs[row,2],6])  ){  #if the $clust doesnt already have an assignement
+              if (abs(ordered.neebs[row,8] - year.comparison.avg) <= (year.order2mean.meanvar[year.order2mean.meanvar$i.val==i.val.ordered.neebs,4])){
+              depth.list<-c(depth.list, ordered.neebs[row,5]) #add new depths
+              year.list<-c(year.list, ordered.neebs[row,8])
+              print(paste0("Cluster number: ",cluster.num," depth added: ", tail(depth.list, n=1), " from point ", ordered.neebs[row,2]))  #print to console for checking
+              counter<-length(depth.list) #make counter length of depth.list
+              clustering.info$clust[clustering.info$i==ordered.neebs[row,2]]<-cluster.num #assign the new cluster number to the $clust column 
+              depth.comparison.avg<-sum(depth.list)/counter # make new average for comparison from depth.list and counter
+              year.comparison.avg<-sum(year.list)/counter
+              new.next.list<-c(new.next.list,ordered.neebs[row,2]) #add the neighbor that now checks out to the new list so it's neighbors can be evaluated
+            }
+            }
           }
           
-        }
-        
         } 
       }
-     
-   
+      
+      
     }
     next.list<-new.next.list #once you step out of evaluating the neighbors for a single jvalue (in top for loop), pass a new list of neighbors to search through
   }
@@ -779,15 +882,6 @@ spud_year.sd<-aggregate(top.clusters$spud, by=list(top.clusters$clust), FUN=sd,n
 clust.depth.time<-as.data.frame(cbind(depth.mean[1],round(depth.mean[2], digits = 0),round(depth.sd[2], digits = 0),
                                       round(spud_year.mean[2], digits = 0),round(spud_year.sd[2], digits = 0)))
 colnames(clust.depth.time)<-c("clust","avg.depth","sd.depth","avg.spud.year","sd.spud.year")
-
-
-
-
-
-
-
-
-
 
 
 
