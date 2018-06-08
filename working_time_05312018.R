@@ -302,7 +302,7 @@ for (i.val in unique.global.i) {
   
   #populate the Local.Dist.Const column for (Pi)
   ###Local distance constraint for Pi
-  order2mean.meanvar$Local.Dist.Const<-order2mean.meanvar$second.order.mean + .5*order2mean.meanvar$mean.var
+  order2mean.meanvar$Local.Dist.Const<-order2mean.meanvar$second.order.mean + .75*order2mean.meanvar$mean.var
 }
 
 after.local.criteria<-Sys.time()
@@ -630,7 +630,7 @@ for (i.val in unique.depth.i) {
   
   #populate the Local.Dist.Const column for (Pi)
   ###Local distance constraint for Pi
-  year.order2mean.meanvar$Spud.Const<-year.order2mean.meanvar$second.order.mean + .5*year.order2mean.meanvar$mean.var
+  year.order2mean.meanvar$Spud.Const<-year.order2mean.meanvar$second.order.mean + 1.5*year.order2mean.meanvar$mean.var
 }
 
 

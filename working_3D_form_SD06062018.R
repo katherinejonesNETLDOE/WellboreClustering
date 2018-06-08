@@ -46,13 +46,15 @@ lat<-data.frame(df[ ,which(colnames(df)=="Surface_Latitude")])    #change these 
 long<-data.frame(df[ ,which(colnames(df)=="Surface_Longitude")])   #change these depending on csv headers
 depth<-data.frame(df[ ,which(colnames(df)=="Depth_Total_Driller")])   #change these depending on csv headers
 spud_date<-data.frame(df[ ,which(colnames(df)=="Date_Spud")]) 
+form_produc<-data.frame(df[ ,which(colnames(df)=="Formation_Producing_Name")]) 
 
 #puts all of the single column dataframes into one and names the columns
 df.lat.long.depth<-as.data.frame(cbind(long,lat,depth,spud_date))
 colnames(df.lat.long.depth)<-c("x","y","depth","spud_date")
 df.lat.long.depth$spud_year<-as.numeric(format(as.Date(df.lat.long.depth$spud_date, format="%m/%d/%Y"),"%Y")) #get just the year for spuds
 df.lat.long.depth$spud_date<-NULL #get rid of column year was taken from
-
+df.lat.long.depth$form_produc<-df$Formation_Producing_Name
+colnames(df.lat.long.depth)<-c("x","y","depth","spud_year","form_produc")
 ##### NEED ##### 
 #to deal more extensively with duplicates, but this will come from searching wellbores with matching 10-dig API's
 
@@ -63,6 +65,7 @@ df.1.uni.depth<-df.lat.long.depth[!duplicated(df.lat.long.depth[,1:2]),] #in the
 #writes depth to be it's own vector after depths assocaited with duplicate (x.y) coords. are removed
 depth.vec<-as.vector(df.lat.long.depth[,3])
 spud.vec<-as.vector(df.lat.long.depth[,4])
+form.vec<-as.vector(df.lat.long.depth[,5])
 
 #creates a 2D matrix to store x,y coords
 matrix.xy<-cbind(df.lat.long.depth[,1],df.lat.long.depth[,2])
@@ -84,8 +87,10 @@ summary(tri.all.points)
 plot.tri(tri.all.points)
 
 #creates dataframe to append all of the i values, the x coords, the y coords, and the depth for each i value
-tri.withdepth<-as.data.frame(cbind(as.vector(1:length(tri.all.points$x)),as.vector(tri.all.points$x),as.vector(tri.all.points$y),depth.vec,spud.vec))
-colnames(tri.withdepth)<-c("i","x","y","depth","spud")
+tri.withdepth<-as.data.frame(cbind(as.vector(1:length(tri.all.points$x)),as.vector(tri.all.points$x),as.vector(tri.all.points$y),depth.vec,spud.vec,form.vec))
+colnames(tri.withdepth)<-c("i","x","y","depth","spud","form_produc")
+tri.withdepth$x <- as.numeric(as.character(tri.withdepth$x))
+tri.withdepth$y <- as.numeric(as.character(tri.withdepth$y))
 
 #not clear why this is needed, but defined as list length minus 1 --> list of what? more than just vertices?
 k <- seq_len( tri.all.points$tlnew - 1 )
@@ -300,7 +305,7 @@ for (i.val in unique.global.i) {
   
   #populate the Local.Dist.Const column for (Pi)
   ###Local distance constraint for Pi
-  order2mean.meanvar$Local.Dist.Const<-order2mean.meanvar$second.order.mean + 2*order2mean.meanvar$mean.var
+  order2mean.meanvar$Local.Dist.Const<-order2mean.meanvar$second.order.mean + 1.5*order2mean.meanvar$mean.var
 }
 
 after.local.criteria<-Sys.time()
@@ -363,25 +368,30 @@ unique.i.good.local<-unique(good.local.edges.tri$i)
 # T1.att.diff.SD<-data.frame()
 # 
 # #used this when trying to run on subset of data to speed up testing
-# #test.i<-unique.global.i[11217:11532]
-# good.local.edges.tri$spud<- tri.withdepth$spud[match(good.local.edges.tri$i, tri.withdepth$i)]
-# good.local.edges.tri$depth.i<- tri.withdepth$depth[match(good.local.edges.tri$i, tri.withdepth$i)]
-# good.local.edges.tri$depth.j<- tri.withdepth$depth[match(good.local.edges.tri$j, tri.withdepth$i)]
-# good.local.edges.tri$depth.diff<-abs(good.local.edges.tri$depth.i-good.local.edges.tri$depth.j)
+#test.i<-unique.global.i[11217:11532]
+good.global.edges.tri$spud<- tri.withdepth$spud[match(good.global.edges.tri$i, tri.withdepth$i)]
+good.global.edges.tri$depth.i<- tri.withdepth$depth[match(good.global.edges.tri$i, tri.withdepth$i)]
+good.global.edges.tri$depth.j<- tri.withdepth$depth[match(good.global.edges.tri$j, tri.withdepth$i)]
+good.global.edges.tri$depth.diff<-as.numeric(abs(as.numeric(good.global.edges.tri$depth.i)-as.numeric(good.global.edges.tri$depth.j)))
+good.global.edges.tri$form.i<-tri.withdepth$form_produc[match(good.global.edges.tri$i, tri.withdepth$i)]
+good.global.edges.tri$form.j<-tri.withdepth$form_produc[match(good.global.edges.tri$j, tri.withdepth$i)]
+good.global.edges.tri$xy.ratio<-good.global.edges.tri$distances/good.global.edges.tri$depth.diff
 
 #empty dataframe to populate with i values, 2-Order.Mean (Pi) AND Mean.Variation(Pi)
 D3.order2mean.meanvar<-data.frame()
 
 #used this when trying to run on subset of data to speed up testing
 #test.i<-unique.global.i[11217:11532]
-good.local.edges.tri$spud<- tri.withdepth$spud[match(good.local.edges.tri$i, tri.withdepth$i)]
-good.local.edges.tri$depth.i<- tri.withdepth$depth[match(good.local.edges.tri$i, tri.withdepth$i)]
-good.local.edges.tri$depth.j<- tri.withdepth$depth[match(good.local.edges.tri$j, tri.withdepth$i)]
-good.local.edges.tri$depth.diff<-abs(good.local.edges.tri$depth.i-good.local.edges.tri$depth.j)
+good.local.edges.tri$spud<- (tri.withdepth$spud[match(good.local.edges.tri$i, tri.withdepth$i)])
+good.local.edges.tri$depth.i<- as.numeric(tri.withdepth$depth[match(good.local.edges.tri$i, tri.withdepth$i)])
+good.local.edges.tri$depth.j<- as.numeric(tri.withdepth$depth[match(good.local.edges.tri$j, tri.withdepth$i)])
+good.local.edges.tri$depth.diff<-as.numeric(abs(as.vector(good.local.edges.tri$depth.i-good.local.edges.tri$depth.j)))
+
 
 local.edges.with.3D<-good.local.edges.tri
 local.edges.with.3D$D3.diff<-NA
 local.edges.with.3D$D3.diff<-sqrt((local.edges.with.3D$distances)^2 + (local.edges.with.3D$depth.diff)^2)
+local.edges.with.3D$form_produc<-as.character(tri.withdepth$form_produc[match(local.edges.with.3D$i, tri.withdepth$i)])
 
 #for all unique i values in global.local.edges.tri
 
@@ -472,7 +482,7 @@ for (i.val in unique.i.good.local) {
   
   #populate the Local.Dist.Const column for (Pi)
   ###Local distance constraint for Pi
-  D3.order2mean.meanvar$D3.diff.const<-D3.order2mean.meanvar$second.order.mean + 1.5*D3.order2mean.meanvar$mean.var
+  D3.order2mean.meanvar$D3.diff.const<-D3.order2mean.meanvar$second.order.mean + 2*D3.order2mean.meanvar$mean.var
   
   ###create T1.Dist.Const column
   ###this column has to be created wtih NA's because when looping through and trying to rbind() 
@@ -747,12 +757,23 @@ for (value in unique.i.good.depth){
 
 #create dataframe with the information that is necessary for computing spatial reachability while clustering 
 #unique.i.good.depth,current number of spatially reachable points, number of original neighbors, i.avg.att.diff
-spatial.reachability<-as.data.frame(cbind(unique.i.good.depth,i.SDR,num.orig.neighbors,avg.att.diff))  
-colnames(spatial.reachability)<-c("i","sdr","num.orig.neighbs","avg.att.diff") #set easy colnames
+unique.i.from.good.3D<-unique(good.3D$i)
+depth.unique.i<-good.3D$depth.i[unique.i.from.good.3D]
+spatial.reachability<-as.data.frame(cbind(unique.i.good.depth,i.SDR,num.orig.neighbors,avg.att.diff,depth.unique.i))  
+colnames(spatial.reachability)<-c("i","sdr","num.orig.neighbs","avg.att.diff","depth.i") #set easy colnames
+spatial.reachability$i<-as.numeric(spatial.reachability$i)
 
 #create the DI indicator 
 spatial.reachability$DI<- spatial.reachability$sdr + (spatial.reachability$sdr/spatial.reachability$num.orig.neighbs) #create the DI indicator 
 spatial.reachability$clust<-NA  #add a column to receive cluster number
+
+
+test<-as.data.frame(tri.withdepth[spatial.reachability$i %in% tri.withdepth$i,c(1,6)])
+test$i<-as.numeric(test$i)
+spatial.reachability$form_produc<-test[match(spatial.reachability$i,test$i),"form_produc"]
+spatial.reachability$form.avg.SD<-NA
+spatial.reachability$avg.clust.depth<-NA
+spatial.reachability$clust.form<-NA
 
 
 
@@ -782,8 +803,9 @@ D3.order2mean.meanvar <- D3.order2mean.meanvar[!is.na(D3.order2mean.meanvar$SD) 
 
 
 clustering.info<-subset(clustering.info, (clustering.info$i %in% good.3D$i))
-
-
+clustering.info$form_produc<-as.character(clustering.info$form_produc)
+clustering.info<-clustering.info[!is.na(clustering.info$form_produc) & (clustering.info$form_produc!= ""),]
+good.3D<-good.3D[!is.na(good.3D$form_produc) & (good.3D$form_produc!= ""),]
 ### BEGIN the iterative clustering process ###
 
 while (sum(is.na(clustering.info$clust))!=0){ #While there are still points unclustered in clustering.info$clust (indicated by NA), create a new cluster
@@ -793,10 +815,10 @@ while (sum(is.na(clustering.info$clust))!=0){ #While there are still points uncl
   max.di<-max(ordered.DI$DI) #get the max DI
   initial.core.candidates<-ordered.DI[ordered.DI$DI==max.di,] #find all i's with the max DI
   spatial.core.i<-initial.core.candidates[initial.core.candidates$avg.att.diff==min(initial.core.candidates$avg.att.diff),1][1]#the spatial core is then the i with highest DI and lowest avg. att.diff
-  
+  spatial.core.form<-clustering.info[clustering.info$i==spatial.core.i,8]
   if (is.na(spatial.core.i)){
     spatial.core.i<-initial.core.candidates[1,1]
-    
+    spatial.core.form<-clustering.info[clustering.info$i==spatial.core.i,8]
   }
   
   #if the above line returns multiple spatial.core.i values, take the first one 
@@ -819,11 +841,16 @@ while (sum(is.na(clustering.info$clust))!=0){ #While there are still points uncl
     }
     
     spatial.core.i<-i.and.sdr[i.and.sdr$V2==max(i.and.sdr[,2]),1] #get the i value from the created dataframe that corresponds to highest # of sdr neighbors
-  }
+    spatial.core.form<-as.character(clustering.info[clustering.info$i==spatial.core.i,8])
+    }
   
   
   clustering.info$clust[clustering.info$i == spatial.core.i] <- cluster.num #get spatial.core.i output from beginning of while loop or stepping into if statement
+  clustering.info$clust.form[clustering.info$i ==spatial.core.i]<-spatial.core.form
   
+  if (is.na(spatial.core.form)==FALSE){
+  form.produc.key<-sapply(strsplit(spatial.core.form, split="[\\/,+ ]+"),'[',1) #sets the key word to match formation field...can get more words by changing last term 
+    }
   #depth.comparison.avg<-good.local.edges.tri[good.3D$i==spatial.core.i,6][1] #returns a list of all times i's depth appears, just want 1 element
   #year.comparison.avg<-good.local.edges.tri[good.local.edges.tri$i==spatial.core.i,8][1]
   #depth.list<-c() #create empty vector to receive depths for new cluster
@@ -854,25 +881,47 @@ while (sum(is.na(clustering.info$clust))!=0){ #While there are still points uncl
       }
       
       for (row in 1:nrow(ordered.neebs)){ #get all of the neighbors for the j.value above, go through the rows
-        if(ordered.neebs[row,12]!=0){ #this only looks at the point if it's DI.j value is not 0...this seems like a duplicate of above filtering before stepping into while loop
+        if(ordered.neebs[row,13]!=0){ #this only looks at the point if it's DI.j value is not 0...this seems like a duplicate of above filtering before stepping into while loop
           if (nrow(clustering.info[clustering.info$i==(ordered.neebs[row,2]),])!=0){
             if (is.na(clustering.info[clustering.info$i==(ordered.neebs[row,2]),6])==TRUE){ #if the point has already been assigned, back to for loop and go to next neighbor
               #######duplication between line above and below? 
               j.val.ordered.neebs<-ordered.neebs[row,2]
               ## want to compare the standard deviation of the neighbor in question to the neighbor in the cluster
               if (isTRUE(nrow(D3.order2mean.meanvar[D3.order2mean.meanvar$i.val==j.val.ordered.neebs,])!=0)){
-                ## want to compare the standard deviation of the neighbor in question to the neighbor in the cluster -- that's why we use j.val in line below
-                if (abs(D3.order2mean.meanvar[D3.order2mean.meanvar$i.val==j.val.ordered.neebs,4])-(D3.order2mean.meanvar[D3.order2mean.meanvar$i.val==j.val,4]) < .25*(D3.order2mean.meanvar[D3.order2mean.meanvar$i.val==j.val,4])){  #looking to identify points where the point to be added has lower standard deviation than linked point already in cluster
+                # if(is.na(spatial.core.form)){
+                #         if (ordered.neebs[row,7] <= .5*ordered.neebs[row,10]){
+                #           clustering.info$clust[clustering.info$i==ordered.neebs[row,2]]<-cluster.num #assign the new cluster number to the $clust column 
+                #           clustering.info$clust.form[clustering.info$i==ordered.neebs[row,2]]<-"No_cluster_form"
+                #           new.next.list<-c(new.next.list,ordered.neebs[row,2])
+                #         }
+                # }
+                # else{
+                  if(isTRUE(length(grep(form.produc.key, ordered.neebs[row,9])!=0))){
+                    clustering.info$clust[clustering.info$i==ordered.neebs[row,2]]<-cluster.num #assign the new cluster number to the $clust column 
+                    clustering.info$clust.form[clustering.info$i==ordered.neebs[row,2]]<-spatial.core.form
+                    new.next.list<-c(new.next.list,ordered.neebs[row,2])
+                     }
+                   # else{
+                    ## want to compare the standard deviation of the neighbor in question to the neighbor in the cluster -- that's why we use j.val in line below
+                    # if ( (ordered.neebs[row,7] <= .5*ordered.neebs[row,10] )){  #might need to alter this term....#looking to identify points where the point to be added has lower standard deviation than linked point already in cluster #####abs((D3.order2mean.meanvar[D3.order2mean.meanvar$i.val==j.val.ordered.neebs,4])-(D3.order2mean.meanvar[D3.order2mean.meanvar$i.val==j.val,4])) < .25*(D3.order2mean.meanvar[D3.order2mean.meanvar$i.val==j.val,4])
+                    #   clustering.info$clust[clustering.info$i==ordered.neebs[row,2]]<-cluster.num #assign the new cluster number to the $clust column 
+                    #   clustering.info$clust.form[clustering.info$i==ordered.neebs[row,2]]<-spatial.core.form
+                    #   new.next.list<-c(new.next.list,ordered.neebs[row,2])
+                    # #for the second round of evaluation - would be nice to make both standard deviation and depth a criteria
+                #}
+                  #}
+                  
                   #if (abs(ordered.neebs[row,8] - year.comparison.avg) <= (year.order2mean.meanvar[year.order2mean.meanvar$i.val==i.val.ordered.neebs,4])){
                   #depth.list<-c(depth.list, ordered.neebs[row,5]) #add new depths
                   #year.list<-c(year.list, ordered.neebs[row,8])
                   #print(paste0("Cluster number: ",cluster.num," depth added: ", tail(depth.list, n=1), " from point ", ordered.neebs[row,2]))  #print to console for checking
                   #counter<-length(depth.list) #make counter length of depth.list
-                  clustering.info$clust[clustering.info$i==ordered.neebs[row,2]]<-cluster.num #assign the new cluster number to the $clust column 
+                  #clustering.info$clust[clustering.info$i==ordered.neebs[row,2]]<-cluster.num #assign the new cluster number to the $clust column 
+                  #clustering.info$clust.form[clustering.info$i==ordered.neebs[row,2]]<-spatial.core.form
                   #depth.comparison.avg<-sum(depth.list)/counter # make new average for comparison from depth.list and counter
                   #year.comparison.avg<-sum(year.list)/counter
-                  new.next.list<-c(new.next.list,ordered.neebs[row,2]) #add the neighbor that now checks out to the new list so it's neighbors can be evaluated
-                }
+                  #new.next.list<-c(new.next.list,ordered.neebs[row,2]) #add the neighbor that now checks out to the new list so it's neighbors can be evaluated
+                
               }
             }
           }
@@ -880,10 +929,12 @@ while (sum(is.na(clustering.info$clust))!=0){ #While there are still points uncl
         } 
       }
       
-      
-    }
+    } 
+    
     next.list<-new.next.list #once you step out of evaluating the neighbors for a single jvalue (in top for loop), pass a new list of neighbors to search through
   }
+  avg.clust.depth<-mean(clustering.info[clustering.info$clust==cluster.num,5])
+  clustering.info$avg.clust.depth[clustering.info$clust==cluster.num]<-avg.clust.depth
   cluster.num<-cluster.num+1 #when no more neighbors pass criteria, next.list is empty, steps out of 2nd while loop to top while loop, and begins another cluster
 }
 
@@ -909,7 +960,7 @@ noise<-as.integer(clust.tab$Var1[clust.tab$Freq==1]) #wherever the $Freq==1, tha
 
 no.noise.clust<-clustering.info[!(clustering.info$i %in% noise),] 
 
-
+plot(tri.withdepth$x,tri.withdepth$y,pch=19,col="black")
 no.noise.clust$depth<-tri.withdepth[match(no.noise.clust$i,tri.withdepth$i),"depth"] 
 no.noise.clust$spud<-tri.withdepth[match(no.noise.clust$i,tri.withdepth$i),"spud"] 
 

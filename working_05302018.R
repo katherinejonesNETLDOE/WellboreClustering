@@ -771,7 +771,7 @@ cluster.table<-as.data.frame(table(top.clusters$clust))
 depth.mean<-aggregate(top.clusters$depth, by=list(top.clusters$clust), FUN=mean,na.rm=TRUE)
 depth.sd<-aggregate(top.clusters$depth, by=list(top.clusters$clust), FUN=sd,na.rm=TRUE)
 
-#top.formations.ok$spud_year<-as.numeric(format(as.Date(top.formations.ok$Date_Spud, format="%m/%d/%Y"),"%Y"))
+top.formations.ok$spud_year<-as.numeric(format(as.Date(top.formations.ok$Date_Spud, format="%m/%d/%Y"),"%Y"))
 
 spud_year.mean<-aggregate(top.clusters$spud, by=list(top.clusters$clust), FUN=mean,na.rm=TRUE)
 spud_year.sd<-aggregate(top.clusters$spud, by=list(top.clusters$clust), FUN=sd,na.rm=TRUE)
