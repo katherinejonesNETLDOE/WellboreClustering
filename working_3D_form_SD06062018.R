@@ -19,10 +19,15 @@ library(rgeos)
 #####
 
 #enter filepath to input data - use abbreviated folder path within working directory (back slashes included above)
-input.filepath<-"inputs\\okwells_GT.csv"
+input.filepath<-"inputs\\okwells_AB_AUp.csv"
 
 #read in CSV data - currently set up to take in IHS data
+
+options("scipen"=100, "digits"=10)
+
+
 df<-read.csv(input.filepath)
+
 
 
 #checking duplicates for new and old IHS data
@@ -42,8 +47,8 @@ split.filepath<-strsplit(input.filepath,"[.]")[[1]][1]
 input.initials<-str_sub(split.filepath,-2,-1)
 
 #creates individual dataframes with each of these columns
-lat<-data.frame(df[ ,which(colnames(df)=="Surface_Latitude")])    #change these depending on csv headers
-long<-data.frame(df[ ,which(colnames(df)=="Surface_Longitude")])   #change these depending on csv headers
+lat<-data.frame(df[ ,which(colnames(df)=="Surface.Latitude")])    #change these depending on csv headers
+long<-data.frame(df[ ,which(colnames(df)=="Surface.Longitude")])   #change these depending on csv headers
 depth<-data.frame(df[ ,which(colnames(df)=="Depth_Total_Driller")])   #change these depending on csv headers
 spud_date<-data.frame(df[ ,which(colnames(df)=="Date_Spud")]) 
 form_produc<-data.frame(df[ ,which(colnames(df)=="Formation_Producing_Name")]) 
@@ -68,18 +73,28 @@ spud.vec<-as.vector(df.lat.long.depth[,4])
 form.vec<-as.vector(df.lat.long.depth[,5])
 
 #creates a 2D matrix to store x,y coords
-matrix.xy<-cbind(df.lat.long.depth[,1],df.lat.long.depth[,2])
+matrix.xy<-cbind(df.1.uni.depth[,1],df.1.uni.depth[,2])
 
 #uses rgdal to project the data from lat,long to UTM
 #need to understand if it loses accuracy during this process
-xy.proj<-rgdal::project(matrix.xy, "+proj=utm +zone=15 ellps=WGS84") 
+xy.proj<-rgdal::project(matrix.xy, "+proj=utm +zone=14 ellps=WGS84") 
+
+#xy.proj<-xy.proj[!is.infinite(xy.proj)]
+
 
 #write out independent x,y vectors for these coordinates
-x.proj<-xy.proj[,1]
-y.proj<-xy.proj[,2]
+x.proj<-as.numeric(xy.proj[,1])
+y.proj<-as.numeric(xy.proj[,2])
+
+xy.proj<-as.data.frame(xy.proj)
+colnames(xy.proj)<-c("x","y")
+
+xy.proj<-xy.proj[!is.na(xy.proj[,1]),]
 
 #with projected x&y vectors, make triangulation! 
-tri.all.points<-tri.mesh(x.proj,y.proj,duplicate="remove")
+tri.all.points<-tri.mesh(xy.proj$x,xy.proj$y,duplicate="remove")
+
+#tri.all.points<-tri.mesh(x.proj,y.proj)
 #get some info about triangles
 summary(tri.all.points)
 
@@ -136,8 +151,9 @@ segments( tri.all.points$x[i], tri.all.points$y[i], tri.all.points$x[j], tri.all
 distances <- sqrt( ( tri.all.points$x[i] - tri.all.points$x[j] ) ^ 2 + ( tri.all.points$y[i] - tri.all.points$y[j] ) ^ 2 )
 
 #creates a dataframe recording the beginning point, end point, and distance of a segment
-point1.point2.length<-as.data.frame(cbind(i,j,distances))
-
+point1.point2.length<-as.data.frame(cbind(i,j,distances,depth.vec))
+point1.point2.length$depth.j<- tri.withdepth$depth[match(point1.point2.length$j, tri.withdepth$i)]
+colnames(point1.point2.length)<-c("i","j","distances","depth.i","depth.j")
 ### BEGIN GLOBAL DOWN SELECT ###
 
 before.global.downselect<-Sys.time()
